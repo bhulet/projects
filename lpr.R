@@ -15,7 +15,7 @@ lpr <- function(){
     capture_names <- lev[2:9]
     capture <- numeric(length(capture_names))
     for (i in 1:length(capture)){
-	      capture[i] <- nrow(subset(data, capture_id == capture_names[i])) / nrow(data) *100
+	capture[i] <- nrow(subset(data, capture_id == capture_names[i])) / nrow(data) *100
         }
     names(capture) <- capture_names
     message("There were ", length(capture), " plate recognition devices used in this dataset")
