@@ -1,3 +1,6 @@
+#This analysis looked at the NYC "march" taxi cab data which can be found
+#here : http://chriswhong.com/open-data/foil_nyc_taxi/
+#
 # All data for a given transaction was removed from analysis when:
 # There were missing data points
 # When Average Speed of taxi < 0 or Average Speed > 60
@@ -5,6 +8,11 @@
 # When ratio of (GPS 'striaght line distance' / Trip Distance) exceeded median +- (3*(Interquartile Range))
 # When March Revenue exceeded median +- (3*(Interquartile Range))
 # "NOC" or "No Charge" payments were removed for analysis of payments
+#
+#This prints values for specific aspects of Average_speed, payments, total revuene by driver, fare per mile,
+#fare per minute, etc.
+#
+#program for finding distance using latitude and longitude is included at the beginning
 
 nyc <- function(){
     earth.dist <- function (long1, lat1, long2, lat2){
