@@ -1,3 +1,12 @@
+################################################################################
+##
+##   2013 - USA CENSUS 
+##   kaggle: https://www.kaggle.com/c/2013-american-community-survey
+##
+##   Download the four data files from Kaggle and save to your working directory
+##
+################################################################################
+
 library(data.table)
 library(sqldf)
 
@@ -33,6 +42,66 @@ identical(dbListFields(dcon, "houseA"), dbListFields(dcon, "houseB"))
 
 dbListFields(dcon, "peopleA")
 identical(dbListFields(dcon, "peopleA"), dbListFields(dcon, "peopleB"))
+
+## Close Connection
+dbDisconnect(dcon)
+
+#################################################################
+## 
+## Exploring College Graduates and Specifically Stats Majors
+##
+################################################################
+
+library(ggplot2)
+
+## Create connection with the database
+dcon <- dbConnect(SQLite(), dbname="census.sqlite")
+
+## Selecting all colege graduates
+res <- dbSendQuery(conn=dcon, "
+SELECT SCHL 
+FROM peopleA
+WHERE SCHL IN ('20', '21' , '22', '23', '24')
+UNION ALL
+SELECT SCHL 
+FROM peopleB
+WHERE SCHL IN ('20', '21' , '22', '23', '24');
+")
+data <- fetch(res,-1)
+dbClearResult(res)
+
+## HISTOGRAM of college grads
+ggplot(data = data) +
+  aes(as.factor(SCHL)) +
+  geom_histogram(binwidth = 1) +
+  ggtitle("Histogram of Educational Attainment \n For Census Respondents") +
+  scale_x_discrete(name ="" , labels=c("20" = "Associates degree", "21" = "Bachelor's degree", "22" = "Master's degree", 
+                                        "23" = "Professional degree", "24"= "Doctorate degree")) +
+  ylab("Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## Selecting All of the Statistics Majors FOD1P (Field of First Degree) AND FOD2P (2nd Degree)   
+res <- dbSendQuery(conn=dcon, "
+SELECT SCHL, SCIENGP, SCIENGRLP       
+FROM peopleA
+WHERE FOD1P  IN ('3702' , '6212')
+UNION ALL
+SELECT SCHL, SCIENGP, SCIENGRLP 
+FROM peopleB
+WHERE FOD1P IN ('3702' , '6212');
+")
+data <- fetch(res,-1)
+dbClearResult(res)
+
+## HISTORGRAM OF STATS Graduates
+ggplot(data = data) +
+  aes(as.factor(SCHL)) +
+  geom_histogram(binwidth = 1) +
+  ggtitle("Histogram of Educational Attainment \n For Statistics Majors") +
+  scale_x_discrete(name = "" , labels=c("20" = "Associates degree", "21" = "Bachelor's degree", "22" = "Master's degree", 
+                                                   "23" = "Professional degree", "24"= "Doctorate degree")) +
+  ylab("Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ## Disconnect from the Database
 dbDisconnect(dcon)
