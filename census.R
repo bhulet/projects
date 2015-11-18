@@ -82,11 +82,11 @@ ggplot(data = data) +
 
 ## Selecting All of the Statistics Majors FOD1P (Field of First Degree) AND FOD2P (2nd Degree)   
 res <- dbSendQuery(conn=dcon, "
-SELECT SCHL, SCIENGP, SCIENGRLP       
+SELECT SCHL    
 FROM peopleA
 WHERE FOD1P  IN ('3702' , '6212')
 UNION ALL
-SELECT SCHL, SCIENGP, SCIENGRLP 
+SELECT SCHL
 FROM peopleB
 WHERE FOD1P IN ('3702' , '6212');
 ")
