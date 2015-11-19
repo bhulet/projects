@@ -148,6 +148,39 @@ library(ggplot2)
 ## Create connection with the database
 dcon <- dbConnect(SQLite(), dbname="census.sqlite")
 
+
+###################################
+#Where did they perform the census?
+###################################
+
+## selecting the states of all people
+res <- dbSendQuery(conn=dcon, "
+SELECT ST 
+FROM people;
+")
+data <- fetch(res,-1)
+dbClearResult(res)
+
+stateLabels <- c("alabama", "alaska", "arizona", "arkansas", "california",
+                 "colorado", "connecticut", "delaware", "district of columbia", "florida",
+                 "georgia", "hawaii", "idaho", "illinois", "indiana",
+                 "iowa", "kansas", "kentucky", "louisiana", "maine",
+                 "maryland", "massachusetts", "michigan", "minnesota", "mississippi",
+                 "missouri", "montana", "nebraska", "nevada", "new hampshire",
+                 "new jersey", "new mexico", "new york", "north carolina", "north dakota",
+                 "ohio", "oklahoma", "oregon", "pennsylvania", "rhode island",
+                 "south carolina", "south dakota", "tennessee", "texas", "utah",
+                 "vermont", "virginia", "washington", "west virginia", "wisconsin",
+                 "wyoming")
+
+data$region <- factor(data$ST, labels = stateLabels)
+table(data$region)
+vector <- paste(as.numeric(summary(data$region)))
+percent <- round(as.numeric(vector) * 100 / nrow(data), 4)
+both <- as.data.frame(cbind(stateLabels, as.numeric(percent)))
+names(both) <- c("State", "Percent")
+both
+
 ## Selecting all colege graduates
 res <- dbSendQuery(conn=dcon, "
 SELECT SCHL 
@@ -162,17 +195,20 @@ cat("In 2013 there were", numberDegree, "people who reported having a college de
 
 ## HISTOGRAM of college grads
 ggplot(data = data) +
-  aes(as.factor(SCHL)) +
+  aes(as.factor(SCHL), fill = as.factor(SCHL)) +
   geom_histogram(binwidth = 1) +
-  ggtitle("Histogram of Educational Attainment \n For Census Respondents") +
+  ggtitle("Post Highschool Educational Attainment \n For Census Respondents") +
   scale_x_discrete(name ="" , labels=c("20" = "Associates degree", "21" = "Bachelor's degree", "22" = "Master's degree", 
                                         "23" = "Professional degree", "24"= "Doctorate degree")) +
-  ylab("Count") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  ylab("Number of People") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_discrete(name="Degree",
+                      breaks=c("20", "21", "22", "23", "24"),
+                      labels=c("Associates degree", "Bachelor's", "Master's", "Professional", "Doctorate"))
 
 ## Selecting All of the Statistics Majors FOD1P (Field of First Degree) AND FOD2P (2nd Degree)   
 res <- dbSendQuery(conn=dcon, "
-SELECT SCHL     
+SELECT SCHL, ST     
 FROM people
 WHERE FOD1P  IN ('3702' , '6212')
 OR FOD2P IN ('3702' , '6212');
@@ -183,20 +219,62 @@ dbClearResult(res)
 numberStats <- nrow(data)
 
 cat("In 2013 there were", numberStats, "people who have a stats or stats related degree")
-cat("This is", round(numberStats/numberDegree, 4), "% of the total number of College Degrees")
+cat("This is", round(numberStats/numberDegree, 4), "% of the total number of College Degrees reported")
+
+## Creating a map
+states <- map_data("state")
+data$region <- factor(data$ST, labels = stateLabels)
+data$total <- 0
+sumTot <- as.numeric(summary(data$region))
+
+for (i in 1:length(stateLabels)){
+  data$total[data$region %in% stateLabels[i]] <- sumTot[i]
+}
+
+data$totalc <- 0
+correctedTotal <- sumTot/percent
+for (i in 1:length(stateLabels)){
+  data$totalc[data$region %in% stateLabels[i]] <- correctedTotal[i]
+}
+
+merged <- merge(states, data, by = "region")
+merged <- merged[order(merged$order), ]
+
+## plotting map
+ggplot(merged) +
+  aes(long, lat, group=group) +
+  geom_polygon(aes(fill=total)) +
+  theme_bw() +
+  scale_fill_continuous(name="Stats Degrees") +
+  theme(axis.text = element_blank(), axis.title=element_blank(), line = element_blank()) 
+
+## Plotting corrected map
+ggplot(merged) +
+  aes(long, lat, group=group) +
+  geom_polygon(aes(fill=totalc)) +
+  theme_bw() +
+  ggtitle("Controlling for sampling Bias") +
+  scale_fill_continuous(name="Stats Degrees") +
+  theme(axis.text = element_blank(), axis.title=element_blank(), line = element_blank()) 
 
 ## HISTORGRAM OF STATS Graduates
 ggplot(data = data) +
-  aes(as.factor(SCHL)) +
+  aes(as.factor(SCHL), fill=as.factor(SCHL)) +
   geom_histogram(binwidth = 1) +
   ggtitle("Histogram of Educational Attainment \n For Statistics Majors") +
   scale_x_discrete(name = "" , labels=c("20" = "Associates degree", "21" = "Bachelor's degree", "22" = "Master's degree", 
                                                    "23" = "Professional degree", "24"= "Doctorate degree")) +
-  ylab("Count") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  ylab("Number of People") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_discrete(name="Degree",
+                      breaks=c("21", "22", "23", "24"),
+                      labels=c("Bachelor's", "Master's", "Professional", "Doctorate"))
+
 
 ## Disconnect from the Database
 dbDisconnect(dcon)
 
 ## Clean Enviornment 
-rm(data, res, dcon, numberStats, numberDegree)
+rm(data, res, dcon, numberStats, numberDegree, merged, 
+   states, percent, both, sumTot, vector, stateLabels, i,
+   correctedTotal)
